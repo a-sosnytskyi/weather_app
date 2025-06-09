@@ -104,7 +104,7 @@ class OpenWeatherMapClient:
                 lat=geo_data["lat"],
                 lon=geo_data["lon"])
 
-        except (BadRequestException, BadGatewayException):
+        except (BadRequestException, BadGatewayException, NotFoundException):
             raise
 
         except httpx.HTTPStatusError as e:
@@ -144,11 +144,15 @@ class OpenWeatherMapClient:
         logger.info(f"Fetching weather for coord: {str(coord)}")
         try:
             data = await self._do_request(url, params)
+            if not data:
+                logger.warning(f"No weather data found for coord: {str(coord)}")
+                raise NotFoundException(f"No weather found for coord: {str(coord)}")
+
             result = WeatherResponseSchema.model_validate(data)
             logger.info(f"Successfully fetched weather for coord: {str(coord)}")
             return result
 
-        except (BadRequestException, BadGatewayException):
+        except (BadRequestException, BadGatewayException, NotFoundException):
             raise
 
         except httpx.HTTPStatusError as ex:
