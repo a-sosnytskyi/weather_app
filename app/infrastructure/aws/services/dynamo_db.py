@@ -1,7 +1,7 @@
 from typing import Dict, Any, Optional
 from botocore.exceptions import ClientError
 
-
+from app.kernel.logs import logger
 from ..client import aws_client
 
 
@@ -31,12 +31,19 @@ class DynamoDBService:
                     AttributeDefinitions=attribute_definitions,
                     BillingMode='PAY_PER_REQUEST'
                 )
+                logger.info(f"Created DynamoDB table '{table_name}'")
                 return response
 
             except ClientError as ex:
                 error_code = ex.response['Error']['Code']
                 if error_code == 'ResourceNotFoundException':
                     return None
+
+                logger.error(f"Failed to create DynamoDB table '{table_name}'. Error code: {error_code}")
+                raise
+
+            except Exception as ex:
+                logger.error(f"Failed to create DynamoDB table '{table_name}'. Error: {str(ex)}")
                 raise
 
     async def delete_table(self, table_name: str):
@@ -55,11 +62,19 @@ class DynamoDBService:
         async with aws_client.get_dynamodb_client() as client:
             try:
                 response = await client.delete_table(TableName=table_name)
+                logger.info(f"Removed DynamoDB table '{table_name}'")
                 return response
+
             except ClientError as ex:
                 error_code = ex.response['Error']['Code']
                 if error_code == 'ResourceNotFoundException':
                     return None
+
+                logger.error(f"Failed to delete DynamoDB table '{table_name}'. Error code: {error_code}")
+                raise
+
+            except Exception as ex:
+                logger.error(f"Failed to delete DynamoDB table '{table_name}'. Error: {str(ex)}")
                 raise
 
     async def put_item(self, table_name: str, item: Dict[str, Any]):
@@ -74,8 +89,15 @@ class DynamoDBService:
             dict: Put item operation response.
         """
         async with aws_client.get_dynamodb_resource() as dynamodb:
-            table = await dynamodb.Table(table_name)
-            return await table.put_item(Item=item)
+            try:
+                table = await dynamodb.Table(table_name)
+                result = await table.put_item(Item=item)
+                logger.debug(f"Put item in DynamoDB table '{table_name}'")
+                return result
+
+            except Exception as ex:
+                logger.error(f"Failed to put item into DynamoDB table. Error: {str(ex)}")
+                raise
 
     async def get_item(self, table_name: str, key: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
@@ -89,9 +111,13 @@ class DynamoDBService:
             Optional[Dict[str, Any]]: Item data if found, None otherwise.
         """
         async with aws_client.get_dynamodb_resource() as dynamodb:
-            table = await dynamodb.Table(table_name)
-            response = await table.get_item(Key=key)
-            return response.get('Item')
+            try:
+                table = await dynamodb.Table(table_name)
+                response = await table.get_item(Key=key)
+                return response.get('Item')
+            except Exception as ex:
+                logger.error(f"Failed to get item from DynamoDB table. Error: {str(ex)}")
+                raise
 
     async def delete_item(self, table_name: str, key: Dict[str, Any]):
         """
@@ -105,8 +131,14 @@ class DynamoDBService:
             dict: Delete item operation response.
         """
         async with aws_client.get_dynamodb_resource() as dynamodb:
-            table = await dynamodb.Table(table_name)
-            return await table.delete_item(Key=key)
+            try:
+                table = await dynamodb.Table(table_name)
+                result = await table.delete_item(Key=key)
+                logger.debug(f"Removed item from DynamoDB table '{table_name}', Key '{str(key)}'")
+                return result
+            except Exception as ex:
+                logger.error(f"Failed to put item into DynamoDB table. Error: {str(ex)}")
+                raise
 
 
 dynamodb_service = DynamoDBService()

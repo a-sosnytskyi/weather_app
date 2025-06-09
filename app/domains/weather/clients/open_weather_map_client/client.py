@@ -4,6 +4,7 @@ import httpx
 
 from app.domains.weather.schemas import LocationCoordSchema
 from app.exceptions import BadGatewayException, NotFoundException, BadRequestException
+from app.kernel.logs import logger
 from app.kernel.settings import open_weather_settings
 from .schemas import WeatherResponseSchema
 
@@ -45,11 +46,13 @@ class OpenWeatherMapClient:
         """
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
+                logger.debug(f"Making request to {url} with params: {params}")
                 response = await client.get(url, params=params)
                 response.raise_for_status()
                 return response.json()
 
         except httpx.HTTPStatusError as e:
+            logger.error(f"HTTP error {e.response.status_code} from {url}: {e.response.text}")
             if e.response.status_code == 401:
                 raise BadRequestException("Invalid API key")
             elif e.response.status_code >= 500:
@@ -59,9 +62,11 @@ class OpenWeatherMapClient:
                 raise
 
         except httpx.TimeoutException:
+            logger.warning(f"Timeout occurred for request to {url}")
             raise BadGatewayException("Weather service timeout")
 
         except Exception as e:
+            logger.error(f"Unexpected error during request to {url}: {e}")
             raise BadRequestException(f"Request failed: {str(e)}")
 
     async def get_city_geo(self, city_name: str) -> LocationCoordSchema:
@@ -85,11 +90,15 @@ class OpenWeatherMapClient:
             "limit": 1,
             "appid": self.secret_key
         }
+
+        logger.info(f"Fetching coordinates for city: {city_name}")
         try:
             data = await self._do_request(url, params)
             if not data:
+                logger.warning(f"No coordinates found for city: {city_name}")
                 raise NotFoundException(f"City '{city_name}' not found")
 
+            logger.info(f"Successfully found coordinates for city: {city_name}")
             geo_data = data[0]
             return LocationCoordSchema(
                 lat=geo_data["lat"],
@@ -101,7 +110,13 @@ class OpenWeatherMapClient:
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 404:
                 raise NotFoundException(f"City '{city_name}' not found")
+
+            logger.error(f"HTTP error {e.response.status_code} from {url}: {e.response.text}")
             raise BadRequestException(f"Failed to fetch city coordinates: {e.response.status_code}")
+
+        except Exception as ex:
+            logger.error(f"Unexpected error during request to {url}: {str(ex)}")
+            raise BadRequestException(f"Failed to fetch city coordinates: {str(ex)}")
 
     async def get_location_weather(self, coord: LocationCoordSchema) -> WeatherResponseSchema:
         """
@@ -126,16 +141,23 @@ class OpenWeatherMapClient:
             "lang": "en"
         }
 
+        logger.info(f"Fetching weather for coord: {str(coord)}")
         try:
             data = await self._do_request(url, params)
-            return WeatherResponseSchema.model_validate(data)
+            result = WeatherResponseSchema.model_validate(data)
+            logger.info(f"Successfully fetched weather for coord: {str(coord)}")
+            return result
 
         except (BadRequestException, BadGatewayException):
             raise
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 400:
+        except httpx.HTTPStatusError as ex:
+            if ex.response.status_code == 400:
                 raise BadRequestException(f"Invalid coordinates: {coord.lat}, {coord.lon}")
-            raise BadRequestException(f"Failed to fetch weather data: {e.response.status_code}")
-        except Exception as e:
-            raise BadRequestException(f"Failed to fetch weather data: {str(e)}")
+
+            logger.error(f"HTTP error {ex.response.status_code} from {url}: {ex.response.text}")
+            raise BadRequestException(f"Failed to fetch weather data: {ex.response.status_code}")
+
+        except Exception as ex:
+            logger.error(f"Unexpected error during request to {url}: {str(ex)}")
+            raise BadRequestException(f"Failed to fetch weather data: {str(ex)}")

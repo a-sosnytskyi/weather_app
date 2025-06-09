@@ -1,6 +1,8 @@
 from typing import Dict, Optional, List, Tuple
+
 from botocore.exceptions import ClientError
 
+from app.kernel.logs import logger
 from ..client import aws_client
 
 
@@ -35,12 +37,20 @@ class S3Service:
                         )
                     else:
                         await s3.create_bucket(Bucket=bucket_name)
+
+                logger.info(f"New S3 bucket {bucket_name} created.")
                 return True
 
             except ClientError as ex:
                 error_code = ex.response['Error']['Code']
-                if error_code in ["BucketAlreadyOwnedByYou"]:
+                if error_code == "BucketAlreadyOwnedByYou":
                     return True
+
+                logger.error(f"Error creating S3 bucket '{bucket_name}' with code {error_code}.")
+                raise
+
+            except Exception as ex:
+                logger.error(f"Error creating S3 bucket '{bucket_name}' with error {str(ex)}.")
                 raise
 
     async def put_object(
@@ -73,9 +83,11 @@ class S3Service:
                     params['ContentType'] = content_type
 
                 await s3.put_object(**params)
+                logger.debug(f"Uploaded object '{key}' to S3 bucket '{bucket_name}'")
                 return True
 
-            except Exception:
+            except Exception as ex:
+                logger.error(f"Error putting object to S3 bucket '{bucket_name}' with error {str(ex)}.")
                 raise
 
     async def get_object_content(self, bucket_name: str, key: str) -> Optional[Tuple[bytes, Dict]]:
@@ -102,6 +114,12 @@ class S3Service:
                 error_code = ex.response['Error']['Code']
                 if error_code in ("NoSuchKey", "NoSuchBucket"):
                     return None
+
+                logger.error(f"Error getting object '{bucket_name}' with code {error_code}.")
+                raise
+
+            except Exception as ex:
+                logger.error(f"Error getting object '{bucket_name}' with error {str(ex)}.")
                 raise
 
     async def list_buckets(self) -> List[Dict[str, str]]:
@@ -122,7 +140,8 @@ class S3Service:
                         'creation_date': bucket['CreationDate'].isoformat() if bucket.get('CreationDate') else None
                     })
                 return buckets
-            except Exception:
+            except Exception as ex:
+                logger.error(f"Error listing buckets. Error: {str(ex)}.")
                 return []
 
 

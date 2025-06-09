@@ -1,6 +1,7 @@
 import asyncio
 
 from app.domains.weather.data_service import WeatherDataService
+from app.kernel.logs import logger
 from .repositories import WeatherCacheRepository, WeatherS3Repository, DynamoDBWeatherEventRepository
 from .schemas import LocationCoordSchema, LocationWeatherSchema, CityFileInfoSchema
 
@@ -39,6 +40,7 @@ class WeatherApplicationService:
         if file_path_from_cache:
             try:
                 location_weather = await self._s3_repository.get_weather_file_content(file_path_from_cache)
+                logger.debug(f"Extracted location weather from cached file: {file_path_from_cache}")
             except:
                 pass
 

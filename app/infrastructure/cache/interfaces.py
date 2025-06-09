@@ -3,6 +3,7 @@ from typing import Literal, Optional, Any
 
 from aiocache import Cache
 
+from app.kernel.logs import logger
 from .redis_cache import RedisCacheManager
 
 
@@ -109,6 +110,7 @@ class CacheManager:
         try:
             serialized_value = self._serialize_value(value)
             await self._cache.set(key, serialized_value, ttl=ttl)
+            logger.debug(f"Set value to cache. Key: {key}. Engine: {self.engine}. TTL: {ttl}")
             return True
         except Exception:
             return False
@@ -125,6 +127,7 @@ class CacheManager:
         """
         try:
             result = await self._cache.delete(key)
+            logger.debug(f"Removed value from cache. Key: {key}. Engine: {self.engine}.")
             return bool(result)
         except Exception as e:
             return False
