@@ -1,0 +1,27 @@
+.env
+
+# IDE
+.idea
+.idea/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+.env/
+
+# Logs
+*.log
+logs/
+
+# Local development
+*.sqlite3
+.DS_Store

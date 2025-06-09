@@ -1,0 +1,17 @@
+# FRAMEWORK
+fastapi==0.115.12
+uvicorn==0.34.3
+
+# DATA VALIDATION
+pydantic==2.11.5
+pydantic-settings==2.9.1
+
+# EXTERNAL API REQUESTS
+httpx==0.28.1
+
+# CACHE
+aiocache==0.12.3
+redis==6.2.0
+
+# AWS
+aioboto3==14.3.0
