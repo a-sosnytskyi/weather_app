@@ -52,3 +52,4 @@ docker compose up -d --remove-orphans
 - Use `--remove-orphans` flag to clean up any unused containers
 - For development, use `make app-up` to see logs in real-time
 - For production-like deployment, use `make app-up-d` to run in background
+- For testing purposes, it is recommended to disable **DEBUG** mode in .env `DEBUG=False`. This activates a custom error handler that returns structured information when exceptions occur.

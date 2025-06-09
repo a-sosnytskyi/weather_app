@@ -31,9 +31,8 @@ class AppFactory:
         _app = app or FastAPI(debug=app_settings.debug)
         instance = cls(app=_app)
 
-        # if not app_settings.debug:
-        #     instance.register_exception_handlers()
-        instance.register_exception_handlers()
+        if not app_settings.debug:
+            instance.register_exception_handlers()
 
         instance.attach_app_startup_events()
         instance.attach_app_shutdown_events()
