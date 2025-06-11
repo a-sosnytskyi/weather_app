@@ -11,16 +11,16 @@ class WeatherCacheRepository:
     Manages caching of city geographical data and weather file paths
     with configurable TTL and automatic serialization.
     """
-    city_geo_key_prefix = "cityGeo/"
-    city_weather_key_prefix = "cityWeather/"
+    city_geo_key_prefix = "cityGeo"
+    city_weather_key_prefix = "cityWeather"
 
     def _get_city_geo_cache_key(self, city_name: str) -> str:
         """Generate cache key for city geographical coordinates."""
-        return f"{self.city_geo_key_prefix}{city_name}"
+        return f"{self.city_geo_key_prefix}:{city_name}"
 
     def _get_city_weather_cache_key(self, city_name: str) -> str:
         """Generate cache key for city weather data."""
-        return f"{self.city_weather_key_prefix}{city_name}"
+        return f"{self.city_weather_key_prefix}:{city_name}"
 
     async def get_city_geo(self, city_name: str) -> Optional[LocationCoordSchema]:
         """
